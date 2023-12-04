@@ -828,6 +828,7 @@ public class MainActivity extends BaseActivity
         loadSettings();
 
         AbstractMiningService s = binder.getService();
+        s.setBinder(binder);
         MiningConfig cfg = s.newConfig(
                 username,
                 password,
@@ -836,6 +837,7 @@ public class MainActivity extends BaseActivity
                 nThreads,
                 nIntensity
         );
+
 
         s.startMining(cfg);
 

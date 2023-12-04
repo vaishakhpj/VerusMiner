@@ -26,10 +26,14 @@
 
 package shmutalov.verusminer9000.miner;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.text.TextUtils;
@@ -56,11 +60,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import shmutalov.verusminer9000.Config;
+import shmutalov.verusminer9000.MainActivity;
+import shmutalov.verusminer9000.R;
 import shmutalov.verusminer9000.Tools;
 import shmutalov.verusminer9000.api.PoolItem;
 import shmutalov.verusminer9000.api.ProviderManager;
 
 import static android.os.PowerManager.PARTIAL_WAKE_LOCK;
+
+import androidx.core.app.NotificationCompat;
 
 /**
  * ccminer executable based veruscoin mining service
@@ -90,6 +98,7 @@ public class VerusBinMiningService extends AbstractMiningService {
     private String lastOutput = "";
     private MiningConfig lastConfig;
     private static RequestQueue reqQueue;
+    private AbstractMiningServiceBinder binder;
 
     private static final String JSON_GEOIPLOOKUP_API_URL = "https://json.geoiplookup.io/";
 
@@ -113,6 +122,46 @@ public class VerusBinMiningService extends AbstractMiningService {
         Tools.deleteDirectoryContents(new File(privatePath));
 
         reqQueue = Volley.newRequestQueue(this);
+    }
+
+    @Override
+    public void setBinder(AbstractMiningServiceBinder binder) {
+        this.binder = binder;
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+
+        String input = intent.getStringExtra("inputExtra");
+        createNotificationChannel();
+        Intent notificationIntent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this,
+                0, notificationIntent, 0);
+        Notification notification = new NotificationCompat.Builder(this, "1001")//CHANNEL_ID)
+                .setContentTitle("Foreground Service")
+                .setContentText(input)
+                .setSmallIcon(R.drawable.alphatech_it_logo)
+                .setContentIntent(pendingIntent)
+                .build();
+        startForeground(1, notification);
+        //do heavy work on a background thread
+        //stopSelf();
+        //new startMiningAsync().execute(lastConfig);
+        return START_NOT_STICKY;
+
+        //return super.onStartCommand(intent, flags, startId);
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel serviceChannel = new NotificationChannel(
+                    "1001",
+                    "Foreground Service Channel",
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(serviceChannel);
+        }
     }
 
     @Override
@@ -230,7 +279,9 @@ public class VerusBinMiningService extends AbstractMiningService {
 
     @Override
     public IBinder onBind(Intent intent) {
-        return new VerusBinMiningServiceBinder();
+        //return VerusBinMiningService.this;
+        //return new VerusBinMiningServiceBinder();
+        return binder;
     }
 
     @Override
